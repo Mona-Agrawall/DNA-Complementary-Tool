@@ -23,7 +23,7 @@ Pyodide (Python in the browser for running bio-related scripts)
 
 # How to Use
 Clone the repository:
-git clone https://github.com/yourusername/DNA-Complementary-Tool.git
+git clone https://github.com/Mona-Agrawall/DNA-Complementary-Tool.git
 Navigate to the project folder and open index.html in your browser.
 
 Input a DNA sequence and click "Save". The complementary strand will be displayed.
