@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Complementary Strand Generator</title>
+    <script type="module">
+        import init from 'https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js';
+
+        const runPython = async () => {
+            await init();
+            const pythonCode = `
+                def get_complementary_strand(dna):
+                    complementary_strand = ''
+                    for base in dna:
+                        if base == 'A':
+                            complementary_strand += 'T'
+                        elif base == 'T':
+                            complementary_strand += 'A'
+                        elif base == 'C':
+                            complementary_strand += 'G'
+                        elif base == 'G':
+                            complementary_strand += 'C'
+                        else:
+                            complementary_strand += base
+                    return complementary_strand
+
+                complementary_dna = get_complementary_strand('${dna}')
+                complementary_dna
+            `;
+            const output = self.pyodide.runPython(pythonCode);
+            document.getElementById('complementary-dna').innerText = output;
+        };
+
+        document.getElementById('data-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const number = document.getElementById('input-number').value;
+            const name = document.getElementById('input-name').value;
+            const dna = document.getElementById('input-dna').value;
+            if (number.trim() !== '' && name.trim() !== '' && dna.trim() !== '') {
+                saveData(number, name, dna);
+                await runPython();
+                displayData();
+                document.getElementById('input-number').value = '';
+                document.getElementById('input-name').value = '';
+                document.getElementById('input-dna').value = '';
+            } else {
+                alert('Please enter valid data.');
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 2.5rem;
+            color: #333;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .save-btn {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .clear-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #complementary-dna {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fafafa;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .buttons {
+            text-align: center;
+        }
+
+        .buttons button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body onload="clearOldData()">
+    <h1>🧬 DNA Complementary Generator 🧬</h1>
+
+    <div class="container">
+        <form id="data-form">
+            <input type="text" id="input-number" placeholder="Enter number" required>
+            <input type="text" id="input-name" placeholder="Enter name" required>
+            <input type="text" id="input-dna" placeholder="Enter DNA strand" required>
+        </form>
+        <div class="buttons">
+            <button class="save-btn" onclick="saveData()">Save</button>
+            <button class="clear-btn" onclick="clearData()">Clear Data</button>
+        </div>
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Name</th>
+                    <th>Previous DNA Strand</th>
+                    <th>Complementary DNA Strand</th>
+                </tr>
+            </thead>
+            <tbody id="data-list"></tbody>
+        </table>
+        <div id="complementary-dna"></div>
+    </div>
+
+    <script>
+        function saveData() {
+            const number = document.getElementById('input-number').value;
+            const name = document.getElementById('input-name').value;
+            const dna = document.getElementById('input-dna').value;
+
+            if (number && name && dna) {
+                let complementaryStrand = getComplementaryStrand(dna);
+                let savedData = JSON.parse(localStorage.getItem('myData')) || [];
+                savedData.push({ number, name, dna, complementaryStrand });
+                localStorage.setItem('myData', JSON.stringify(savedData));
+                displayData();
+            } else {
+                alert("Please fill in all fields.");
+            }
+        }
+
+        function displayData() {
+            let savedData = JSON.parse(localStorage.getItem('myData')) || [];
+            let dataList = document.getElementById('data-list');
+            dataList.innerHTML = '';
+            savedData.forEach(item => {
+                let row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.number}</td>
+                    <td>${item.name}</td>
+                    <td>${item.dna}</td>
+                    <td>${item.complementaryStrand}</td>
+                `;
+                dataList.appendChild(row);
+            });
+        }
+
+        function clearOldData() {
+            document.getElementById('data-list').innerHTML = '';
+        }
+
+        function clearData() {
+            localStorage.removeItem('myData');
+            displayData();
+        }
+
+        function getComplementaryStrand(dna) {
+            let complementaryStrand = '';
+            for (let i = 0; i < dna.length; i++) {
+                switch (dna[i]) {
+                    case 'A': complementaryStrand += 'T'; break;
+                    case 'T': complementaryStrand += 'A'; break;
+                    case 'C': complementaryStrand += 'G'; break;
+                    case 'G': complementaryStrand += 'C'; break;
+                    default: complementaryStrand += dna[i];
+                }
+            }
+            return complementaryStrand;
+        }
+
+        document.addEventListener("DOMContentLoaded", displayData);
+    </script>
+</body>
+
+</html>
