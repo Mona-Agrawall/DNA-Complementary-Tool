@@ -37,5 +37,9 @@ Enhancing data visualization with graphical outputs.
 # Contributing
 Contributions are welcome! If you have ideas for improvement or find any bugs, feel free to fork this repository, make changes, and submit a pull request.
 
+## Showcase
+<img width="1271" height="1197" alt="image" src="https://github.com/user-attachments/assets/12796095-c8f4-4175-8496-3a90bf65103f" />
+
+
 # License
 This project is licensed under the MIT License.
