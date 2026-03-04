@@ -1,238 +1,682 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNA Complementary Strand Generator</title>
-    <script type="module">
-        import init from 'https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js';
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DNA Complementary Strand Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #050d14;
+      --surface:   #0a1628;
+      --card:      #0d1f35;
+      --border:    #0e3a5c;
+      --accent:    #00e5ff;
+      --accent2:   #00ff9d;
+      --accent3:   #ff6b6b;
+      --text:      #cde8f5;
+      --muted:     #4a7a9b;
+      --glow:      0 0 20px rgba(0,229,255,0.25);
+      --glow2:     0 0 20px rgba(0,255,157,0.25);
+    }
 
-        const runPython = async () => {
-            await init();
-            const pythonCode = `
-                def get_complementary_strand(dna):
-                    complementary_strand = ''
-                    for base in dna:
-                        if base == 'A':
-                            complementary_strand += 'T'
-                        elif base == 'T':
-                            complementary_strand += 'A'
-                        elif base == 'C':
-                            complementary_strand += 'G'
-                        elif base == 'G':
-                            complementary_strand += 'C'
-                        else:
-                            complementary_strand += base
-                    return complementary_strand
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-                complementary_dna = get_complementary_strand('${dna}')
-                complementary_dna
-            `;
-            const output = self.pyodide.runPython(pythonCode);
-            document.getElementById('complementary-dna').innerText = output;
-        };
+    body {
+      font-family: 'Exo 2', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
 
-        document.getElementById('data-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const number = document.getElementById('input-number').value;
-            const name = document.getElementById('input-name').value;
-            const dna = document.getElementById('input-dna').value;
-            if (number.trim() !== '' && name.trim() !== '' && dna.trim() !== '') {
-                saveData(number, name, dna);
-                await runPython();
-                displayData();
-                document.getElementById('input-number').value = '';
-                document.getElementById('input-name').value = '';
-                document.getElementById('input-dna').value = '';
-            } else {
-                alert('Please enter valid data.');
-            }
-        });
-    </script>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
-            color: #333;
-            margin: 0;
-            padding: 0;
-        }
+    /* ── Animated particle background ── */
+    #bg-canvas {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.35;
+    }
 
-        h1 {
-            text-align: center;
-            margin-top: 30px;
-            font-size: 2.5rem;
-            color: #333;
-        }
+    /* ── Layout ── */
+    .page {
+      position: relative; z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
 
-        .container {
-            max-width: 700px;
-            margin: 40px auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        }
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeDown 0.8s ease both;
+    }
+    header .helix-icon { font-size: 3rem; display: block; margin-bottom: 8px; }
+    header h1 {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 30px rgba(0,229,255,0.5);
+    }
+    header p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+    }
 
-        form {
-            margin-bottom: 20px;
-        }
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 30px;
+      margin-bottom: 28px;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+      animation: fadeUp 0.7s ease both;
+    }
+    .card-title {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--border), transparent);
+    }
 
-        input[type="text"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+    /* ── Form ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
 
-        button {
-            padding: 10px 20px;
-            margin: 10px 5px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-        }
+    label {
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
 
-        .save-btn {
-            background-color: #28a745;
-            color: white;
-        }
+    input[type="text"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,255,0.12);
+    }
+    input[type="text"]#input-dna {
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent2);
+    }
+    input[type="text"]#input-dna::placeholder { color: var(--muted); text-transform: none; }
 
-        .clear-btn {
-            background-color: #dc3545;
-            color: white;
-        }
+    /* DNA validation indicator */
+    .dna-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+      height: 14px;
+      transition: color 0.2s;
+    }
+    .dna-hint.valid { color: var(--accent2); }
+    .dna-hint.invalid { color: var(--accent3); }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
 
-        th, td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
+    button {
+      font-family: 'Exo 2', sans-serif;
+      font-weight: 600;
+      font-size: 0.88rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
 
-        th {
-            background-color: #4CAF50;
-            color: white;
-        }
+    .btn-primary {
+      background: linear-gradient(135deg, #006080, #009abf);
+      color: #fff;
+      flex: 1;
+      justify-content: center;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #008ab0, #00cef5);
+      box-shadow: var(--glow);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); }
 
-        tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
+    .btn-danger {
+      background: rgba(255,107,107,0.12);
+      color: var(--accent3);
+      border: 1px solid rgba(255,107,107,0.3);
+    }
+    .btn-danger:hover {
+      background: rgba(255,107,107,0.22);
+      box-shadow: 0 0 16px rgba(255,107,107,0.2);
+      transform: translateY(-1px);
+    }
 
-        #complementary-dna {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fafafa;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
+    .btn-export {
+      background: rgba(0,255,157,0.1);
+      color: var(--accent2);
+      border: 1px solid rgba(0,255,157,0.3);
+    }
+    .btn-export:hover {
+      background: rgba(0,255,157,0.2);
+      box-shadow: var(--glow2);
+      transform: translateY(-1px);
+    }
 
-        .buttons {
-            text-align: center;
-        }
+    /* ── Result display ── */
+    #result-card { display: none; animation: fadeUp 0.5s ease both; }
+    .result-inner {
+      background: var(--surface);
+      border: 1px solid rgba(0,255,157,0.3);
+      border-radius: 10px;
+      padding: 20px 24px;
+      box-shadow: var(--glow2);
+    }
+    .result-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .result-strands {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .strand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .strand-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      min-width: 48px;
+    }
+    .strand-seq {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.05rem;
+      letter-spacing: 0.18em;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    .strand-seq.original { color: #7fb8d8; }
+    .strand-seq.complement { color: var(--accent2); text-shadow: 0 0 10px rgba(0,255,157,0.4); }
 
-        .buttons button {
-            margin-top: 10px;
-        }
-    </style>
+    .base { display: inline-block; transition: transform 0.1s; }
+    .base:hover { transform: scale(1.3); }
+    .base-A { color: #ff6b6b; }
+    .base-T { color: #ffd93d; }
+    .base-C { color: #6bcbff; }
+    .base-G { color: #6bff9e; }
+
+    .pair-connector {
+      text-align: center;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--border);
+      letter-spacing: 0.18em;
+      line-height: 1;
+      margin: 2px 0 2px 60px;
+      word-break: break-all;
+    }
+
+    /* ── Table ── */
+    .table-wrapper { overflow-x: auto; border-radius: 10px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    thead tr {
+      background: rgba(0,229,255,0.08);
+    }
+    th {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      padding: 13px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(14,58,92,0.5);
+      color: var(--text);
+      vertical-align: middle;
+    }
+    td.seq-cell {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+    }
+    td.comp-cell {
+      color: var(--accent2);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+    }
+    tbody tr {
+      transition: background 0.15s;
+      animation: rowIn 0.35s ease both;
+    }
+    tbody tr:hover { background: rgba(0,229,255,0.04); }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .empty-state .icon { font-size: 2rem; display: block; margin-bottom: 8px; opacity: 0.4; }
+
+    .badge {
+      display: inline-block;
+      background: rgba(0,229,255,0.1);
+      border: 1px solid rgba(0,229,255,0.25);
+      color: var(--accent);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      border-radius: 20px;
+      padding: 2px 10px;
+      margin-left: 8px;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--card);
+      border: 1px solid var(--accent2);
+      color: var(--accent2);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      padding: 10px 24px;
+      border-radius: 40px;
+      box-shadow: var(--glow2);
+      opacity: 0;
+      transition: all 0.35s;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @media (max-width: 540px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+      header h1 { font-size: 1.4rem; }
+    }
+  </style>
 </head>
 
-<body onload="clearOldData()">
-    <h1>🧬 DNA Complementary Generator 🧬</h1>
+<body>
+<canvas id="bg-canvas"></canvas>
 
-    <div class="container">
-        <form id="data-form">
-            <input type="text" id="input-number" placeholder="Enter number" required>
-            <input type="text" id="input-name" placeholder="Enter name" required>
-            <input type="text" id="input-dna" placeholder="Enter DNA strand" required>
-        </form>
-        <div class="buttons">
-            <button class="save-btn" onclick="saveData()">Save</button>
-            <button class="clear-btn" onclick="clearData()">Clear Data</button>
-        </div>
-        <table id="data-table">
-            <thead>
-                <tr>
-                    <th>Number</th>
-                    <th>Name</th>
-                    <th>Previous DNA Strand</th>
-                    <th>Complementary DNA Strand</th>
-                </tr>
-            </thead>
-            <tbody id="data-list"></tbody>
-        </table>
-        <div id="complementary-dna"></div>
+<div class="page">
+
+  <header>
+    <span class="helix-icon">🧬</span>
+    <h1>DNA Complementary Strand Generator</h1>
+    <p>Enter a DNA sequence to compute its complementary strand</p>
+  </header>
+
+  <!-- INPUT CARD -->
+  <div class="card" style="animation-delay:0.05s">
+    <div class="card-title">⬡ New Entry</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="input-number">Sample No.</label>
+        <input type="text" id="input-number" placeholder="e.g. 001" autocomplete="off"/>
+      </div>
+      <div class="form-group">
+        <label for="input-name">Name</label>
+        <input type="text" id="input-name" placeholder="e.g. Sample Alpha" autocomplete="off"/>
+      </div>
+      <div class="form-group full">
+        <label for="input-dna">DNA Strand (A, T, C, G)</label>
+        <input type="text" id="input-dna" placeholder="e.g. ATCGGCTA" autocomplete="off" spellcheck="false"/>
+        <span class="dna-hint" id="dna-hint">Only A, T, C, G bases will be processed</span>
+      </div>
     </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="handleAdd()">
+        <span>⬡</span> Generate &amp; Save
+      </button>
+      <button class="btn-danger" onclick="clearAll()">
+        <span>✕</span> Clear All
+      </button>
+      <button class="btn-export" onclick="exportCSV()">
+        <span>↓</span> Export CSV
+      </button>
+    </div>
+  </div>
 
-    <script>
-        function saveData() {
-            const number = document.getElementById('input-number').value;
-            const name = document.getElementById('input-name').value;
-            const dna = document.getElementById('input-dna').value;
+  <!-- RESULT CARD -->
+  <div class="card" id="result-card" style="animation-delay:0s">
+    <div class="card-title">⬡ Last Result</div>
+    <div class="result-inner">
+      <div class="result-label">Base-Pair Visualization</div>
+      <div class="result-strands">
+        <div class="strand-row">
+          <span class="strand-tag">5′ →</span>
+          <span class="strand-seq original" id="res-original"></span>
+        </div>
+        <div class="pair-connector" id="res-connectors"></div>
+        <div class="strand-row">
+          <span class="strand-tag">3′ ←</span>
+          <span class="strand-seq complement" id="res-complement"></span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            if (number && name && dna) {
-                let complementaryStrand = getComplementaryStrand(dna);
-                let savedData = JSON.parse(localStorage.getItem('myData')) || [];
-                savedData.push({ number, name, dna, complementaryStrand });
-                localStorage.setItem('myData', JSON.stringify(savedData));
-                displayData();
-            } else {
-                alert("Please fill in all fields.");
-            }
-        }
+  <!-- TABLE CARD -->
+  <div class="card" style="animation-delay:0.1s">
+    <div class="card-title">
+      ⬡ Records
+      <span class="badge" id="record-count">0</span>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Original Strand (5′→3′)</th>
+            <th>Complement (3′→5′)</th>
+            <th>Length</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="data-list"></tbody>
+      </table>
+      <div class="empty-state" id="empty-state">
+        <span class="icon">🔬</span>
+        No records yet. Enter a DNA sequence above to get started.
+      </div>
+    </div>
+  </div>
 
-        function displayData() {
-            let savedData = JSON.parse(localStorage.getItem('myData')) || [];
-            let dataList = document.getElementById('data-list');
-            dataList.innerHTML = '';
-            savedData.forEach(item => {
-                let row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.number}</td>
-                    <td>${item.name}</td>
-                    <td>${item.dna}</td>
-                    <td>${item.complementaryStrand}</td>
-                `;
-                dataList.appendChild(row);
-            });
-        }
+</div>
 
-        function clearOldData() {
-            document.getElementById('data-list').innerHTML = '';
-        }
+<div id="toast"></div>
 
-        function clearData() {
-            localStorage.removeItem('myData');
-            displayData();
-        }
+<script>
+  /* ─── Data store ─── */
+  let records = [];
 
-        function getComplementaryStrand(dna) {
-            let complementaryStrand = '';
-            for (let i = 0; i < dna.length; i++) {
-                switch (dna[i]) {
-                    case 'A': complementaryStrand += 'T'; break;
-                    case 'T': complementaryStrand += 'A'; break;
-                    case 'C': complementaryStrand += 'G'; break;
-                    case 'G': complementaryStrand += 'C'; break;
-                    default: complementaryStrand += dna[i];
-                }
-            }
-            return complementaryStrand;
-        }
+  /* ─── DNA Logic ─── */
+  const complement = { A:'T', T:'A', C:'G', G:'C' };
 
-        document.addEventListener("DOMContentLoaded", displayData);
-    </script>
+  function getComplement(dna) {
+    return dna.toUpperCase().split('').map(b => complement[b] || b).join('');
+  }
+
+  function colorBase(base) {
+    const cls = { A:'base-A', T:'base-T', C:'base-C', G:'base-G' };
+    return `<span class="base ${cls[base] || ''}">${base}</span>`;
+  }
+
+  function colorStrand(seq) {
+    return seq.split('').map(colorBase).join('');
+  }
+
+  function validateDNA(seq) {
+    const upper = seq.toUpperCase();
+    const valid = /^[ATCG]+$/.test(upper);
+    const unknown = [...new Set(upper.split('').filter(b => !complement[b]))];
+    return { valid, unknown };
+  }
+
+  /* ─── Live input hint ─── */
+  document.getElementById('input-dna').addEventListener('input', function() {
+    const val = this.value.trim();
+    const hint = document.getElementById('dna-hint');
+    if (!val) { hint.className = 'dna-hint'; hint.textContent = 'Only A, T, C, G bases will be processed'; return; }
+    const { valid, unknown } = validateDNA(val);
+    if (valid) {
+      hint.className = 'dna-hint valid';
+      hint.textContent = `✓ Valid — ${val.length} bases`;
+    } else {
+      hint.className = 'dna-hint invalid';
+      hint.textContent = `⚠ Unknown bases detected: ${unknown.join(', ')} — they will be kept as-is`;
+    }
+  });
+
+  /* ─── Add record ─── */
+  function handleAdd() {
+    const num  = document.getElementById('input-number').value.trim();
+    const name = document.getElementById('input-name').value.trim();
+    const dna  = document.getElementById('input-dna').value.trim().toUpperCase();
+
+    if (!num || !name || !dna) { showToast('⚠ Please fill in all fields.'); return; }
+
+    const comp = getComplement(dna);
+    records.push({ id: Date.now(), number: num, name, dna, comp });
+
+    // Show result card
+    showResult(dna, comp);
+    renderTable();
+
+    // Clear inputs
+    document.getElementById('input-number').value = '';
+    document.getElementById('input-name').value = '';
+    document.getElementById('input-dna').value = '';
+    document.getElementById('dna-hint').className = 'dna-hint';
+    document.getElementById('dna-hint').textContent = 'Only A, T, C, G bases will be processed';
+
+    showToast('✓ Strand computed and saved!');
+  }
+
+  /* ─── Show result visualization ─── */
+  function showResult(orig, comp) {
+    const card = document.getElementById('result-card');
+    card.style.display = 'block';
+
+    document.getElementById('res-original').innerHTML = colorStrand(orig);
+    document.getElementById('res-complement').innerHTML = colorStrand(comp);
+
+    // Draw connectors (|)
+    const connectors = orig.split('').map(() => '|').join(' ');
+    document.getElementById('res-connectors').textContent = connectors;
+  }
+
+  /* ─── Render table ─── */
+  function renderTable() {
+    const tbody = document.getElementById('data-list');
+    const empty = document.getElementById('empty-state');
+    document.getElementById('record-count').textContent = records.length;
+
+    if (records.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = records.map((r, i) => `
+      <tr>
+        <td><span style="color:var(--muted);font-family:'Share Tech Mono',monospace">${r.number}</span></td>
+        <td>${r.name}</td>
+        <td class="seq-cell">${r.dna}</td>
+        <td class="comp-cell">${r.comp}</td>
+        <td><span style="color:var(--muted);font-family:'Share Tech Mono',monospace">${r.dna.length}</span></td>
+        <td>
+          <button onclick="deleteRecord(${i})" style="
+            background:none;border:none;cursor:pointer;color:var(--accent3);
+            font-size:1rem;padding:4px 8px;border-radius:4px;
+            transition:background 0.15s;
+          " title="Delete" onmouseover="this.style.background='rgba(255,107,107,0.12)'"
+             onmouseout="this.style.background='none'">✕</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  /* ─── Delete record ─── */
+  function deleteRecord(index) {
+    records.splice(index, 1);
+    renderTable();
+    if (records.length === 0) document.getElementById('result-card').style.display = 'none';
+    showToast('Record deleted.');
+  }
+
+  /* ─── Clear all ─── */
+  function clearAll() {
+    if (records.length === 0) { showToast('Nothing to clear.'); return; }
+    if (!confirm('Clear all records?')) return;
+    records = [];
+    renderTable();
+    document.getElementById('result-card').style.display = 'none';
+    showToast('All records cleared.');
+  }
+
+  /* ─── Export CSV ─── */
+  function exportCSV() {
+    if (records.length === 0) { showToast('No records to export.'); return; }
+    const rows = [['Number','Name','Original Strand','Complementary Strand','Length']];
+    records.forEach(r => rows.push([r.number, r.name, r.dna, r.comp, r.dna.length]));
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'dna_records.csv';
+    a.click();
+    showToast('✓ CSV exported!');
+  }
+
+  /* ─── Toast ─── */
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  /* ─── Enter key support ─── */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleAdd();
+  });
+
+  /* ─── Particle canvas background ─── */
+  (function() {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    const bases = ['A','T','C','G'];
+    const baseColors = { A:'#ff6b6b', T:'#ffd93d', C:'#6bcbff', G:'#6bff9e' };
+    let particles = [];
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    function createParticle() {
+      return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        base: bases[Math.floor(Math.random() * 4)],
+        size: 9 + Math.random() * 8,
+        opacity: 0.08 + Math.random() * 0.18,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: -0.12 - Math.random() * 0.22,
+      };
+    }
+
+    function init() {
+      resize();
+      particles = Array.from({ length: 60 }, createParticle);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        ctx.font = `${p.size}px 'Share Tech Mono', monospace`;
+        ctx.fillStyle = baseColors[p.base];
+        ctx.globalAlpha = p.opacity;
+        ctx.fillText(p.base, p.x, p.y);
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function update() {
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.y < -20) { Object.assign(p, createParticle(), { y: canvas.height + 10 }); }
+        if (p.x < -20 || p.x > canvas.width + 20) { Object.assign(p, createParticle()); }
+      });
+    }
+
+    function loop() { draw(); update(); requestAnimationFrame(loop); }
+
+    window.addEventListener('resize', resize);
+    init();
+    loop();
+  })();
+
+  /* ─── Init ─── */
+  renderTable();
+</script>
 </body>
-
 </html>
